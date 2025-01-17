@@ -98,7 +98,7 @@ app.get('/admin/items', isAuthenticated, (req, res) => {
     const totalItems = db.prepare('SELECT COUNT(*) AS count FROM items WHERE expediente LIKE ?').get(query).count;
     const totalPages = Math.ceil(totalItems / limit);
 
-    const items = db.prepare('SELECT * FROM items WHERE expediente LIKE ? ORDER BY fecha DESC LIMIT ? OFFSET ?').all(query, limit, offset);
+    const items = db.prepare('SELECT * FROM items WHERE expediente LIKE ? ORDER BY id DESC LIMIT ? OFFSET ?').all(query, limit, offset);
 
     res.json({
         success: true,
