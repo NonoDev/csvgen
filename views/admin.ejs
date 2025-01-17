@@ -29,9 +29,9 @@
         <table class="striped">
             <thead>
                 <tr>
-                    <th>Id</th>
-                    <th>CSV</th>
+                    <th id="th-id" data-order="desc">ID <i class="material-icons" id="id-arrow">arrow_downward</i></th>
                     <th>Fecha</th>
+                    <th>CSV</th>
                     <th>Expediente</th>
                     <th class="right-align">Acciones</th>
                 </tr>
@@ -46,13 +46,40 @@
         </ul>
     </div>
 
+    <!-- Modal Structure -->
+    <div id="edit-modal" class="modal">
+        <div class="modal-content">
+            <h4>Editar Expediente</h4>
+            <div class="row">
+                <div class="input-field col s12">
+                    <input id="modal-fecha" type="text" class="validate">
+                    <label for="modal-fecha">Fecha</label>
+                </div>
+                <div class="input-field col s12">
+                    <input id="modal-csv" type="text" class="validate">
+                    <label for="modal-csv">CSV</label>
+                </div>
+                <div class="input-field col s12">
+                    <input id="modal-expediente" type="text" class="validate">
+                    <label for="modal-expediente">Expediente</label>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button id="save-btn" class="modal-close waves-effect waves-green btn-flat">Guardar</button>
+        </div>
+    </div>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             let currentPage = 1;
+            let currentOrderColumn = 'id';
+            let currentOrderDirection = 'desc';
+            let currentEditId = null;
 
-            const loadItems = (page, query = '') => {
-                fetch(`/admin/items?page=${page}&query=${query}`)
+            const loadItems = (page, query = '', orderColumn = 'id', orderDirection = 'desc') => {
+                fetch(`/admin/items?page=${page}&query=${query}&orderColumn=${orderColumn}&orderDirection=${orderDirection}`)
                     .then(response => response.json())
                     .then(data => {
                         if (data.success) {
@@ -64,20 +91,17 @@
                                 row.setAttribute('data-id', item.id);
 
                                 row.innerHTML = `
+                                    <td>${item.id}</td>
                                     <td>
-                                        <input type="text" value="${item.id}" class="id-input">
-                                        <i class="material-icons copy-icon" data-value="${item.id}">content_copy</i>
+                                        <input type="text" value="${item.fecha ? new Date(item.fecha).toISOString().split('T')[0] : 'Fecha no válida'}" class="fecha-input" disabled>
+                                        <i class="material-icons copy-icon" data-value="${item.fecha ? new Date(item.fecha).toISOString().split('T')[0] : 'Fecha no válida'}">content_copy</i>
                                     </td>
                                     <td>
-                                        <input type="text" value="${item.csv}" class="csv-input">
+                                        <input type="text" value="${item.csv}" class="csv-input" disabled>
                                         <i class="material-icons copy-icon" data-value="${item.csv}">content_copy</i>
                                     </td>
                                     <td>
-                                        <input type="text" value="${item.fecha ? new Date(item.fecha).toISOString().split('T')[0] : 'Fecha no válida'}" class="fecha-input">
-                                        <i class="material-icons copy-icon" data-value="${item.fecha}">content_copy</i>
-                                    </td>
-                                    <td>
-                                        <input type="text" value="${item.expediente}" class="expediente-input">
+                                        <input type="text" value="${item.expediente}" class="expediente-input" disabled>
                                         <i class="material-icons copy-icon" data-value="${item.expediente}">content_copy</i>
                                     </td>
                                     <td class="right-align">
@@ -119,36 +143,46 @@
                 document.querySelectorAll('.edit-btn').forEach(button => {
                     button.addEventListener('click', () => {
                         const id = button.getAttribute('data-id');
+                        currentEditId = id;
                         const row = document.querySelector(`tr[data-id="${id}"]`);
-                        const csv = row.querySelector('.csv-input').value.trim();
                         const fecha = row.querySelector('.fecha-input').value.trim();
+                        const csv = row.querySelector('.csv-input').value.trim();
                         const expediente = row.querySelector('.expediente-input').value.trim();
 
-                        const newCsv = prompt("Editar CSV:", csv);
-                        const newFecha = prompt("Editar Fecha:", fecha);
-                        const newExpediente = prompt("Editar Expediente:", expediente);
+                        document.getElementById('modal-fecha').value = fecha;
+                        document.getElementById('modal-csv').value = csv;
+                        document.getElementById('modal-expediente').value = expediente;
 
-                        if (newCsv && newFecha && newExpediente) {
-                            fetch(`/admin/edit/${id}`, {
-                                method: 'PUT',
-                                headers: {
-                                    'Content-Type': 'application/json'
-                                },
-                                body: JSON.stringify({ csv: newCsv, fecha: newFecha, expediente: newExpediente })
-                            }).then(response => response.json()).then(data => {
-                                if (data.success) {
-                                    M.toast({html: 'Elemento editado con éxito'});
-                                    loadItems(currentPage);
-                                } else {
-                                    M.toast({html: 'Error al editar el elemento'});
-                                }
-                            }).catch(error => {
-                                console.error('Error al editar:', error);
-                            });
-                        }
+                        M.updateTextFields();
+                        const modal = M.Modal.getInstance(document.getElementById('edit-modal'));
+                        modal.open();
                     });
                 });
             };
+
+            document.getElementById('save-btn').addEventListener('click', () => {
+                const id = currentEditId;
+                const fecha = document.getElementById('modal-fecha').value.trim();
+                const csv = document.getElementById('modal-csv').value.trim();
+                const expediente = document.getElementById('modal-expediente').value.trim();
+
+                fetch(`/admin/edit/${id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ csv, fecha, expediente })
+                }).then(response => response.json()).then(data => {
+                    if (data.success) {
+                        M.toast({html: 'Elemento editado con éxito'});
+                        loadItems(currentPage, '', currentOrderColumn, currentOrderDirection);
+                    } else {
+                        M.toast({html: 'Error al editar el elemento'});
+                    }
+                }).catch(error => {
+                    console.error('Error al editar:', error);
+                });
+            });
 
             const setupDeleteButtons = () => {
                 document.querySelectorAll('.delete-btn').forEach(button => {
@@ -160,7 +194,7 @@
                             }).then(response => response.json()).then(data => {
                                 if (data.success) {
                                     M.toast({html: 'Elemento eliminado con éxito'});
-                                    loadItems(currentPage);
+                                    loadItems(currentPage, '', currentOrderColumn, currentOrderDirection);
                                 } else {
                                     M.toast({html: 'Error al eliminar el elemento'});
                                 }
@@ -187,7 +221,7 @@
                     a.href = '#!';
                     a.innerText = i;
                     a.addEventListener('click', () => {
-                        loadItems(i);
+                        loadItems(i, '', currentOrderColumn, currentOrderDirection);
                     });
 
                     li.appendChild(a);
@@ -197,10 +231,22 @@
 
             document.getElementById('search').addEventListener('input', (event) => {
                 const query = event.target.value.trim();
-                loadItems(1, query);
+                loadItems(1, query, currentOrderColumn, currentOrderDirection);
             });
 
-            loadItems(currentPage);
+            document.getElementById('th-id').addEventListener('click', () => {
+                currentOrderColumn = 'id';
+                currentOrderDirection = document.getElementById('th-id').getAttribute('data-order') === 'desc' ? 'asc' : 'desc';
+                document.getElementById('th-id').setAttribute('data-order', currentOrderDirection);
+                document.getElementById('id-arrow').innerText = currentOrderDirection === 'desc' ? 'arrow_downward' : 'arrow_upward';
+                loadItems(1, '', currentOrderColumn, currentOrderDirection);
+            });
+
+            loadItems(currentPage, '', currentOrderColumn, currentOrderDirection);
+
+            // Initialize modal
+            const elems = document.querySelectorAll('.modal');
+            M.Modal.init(elems);
         });
     </script>
 </body>

@@ -25,8 +25,8 @@ app.use(
 );
 
 // Configuración de la base de datos SQLite con better-sqlite3
-const dbPath = path.join('/tmp', 'database.sqlite');
-//const dbPath = path.join(__dirname, 'tmp', 'database.sqlite');
+//const dbPath = path.join('/tmp', 'database.sqlite');
+const dbPath = path.join(__dirname, 'tmp', 'database.sqlite');
 const db = betterSqlite3(dbPath, { verbose: console.log });
 
 // Crear tabla si no existe
@@ -94,11 +94,13 @@ app.get('/admin/items', isAuthenticated, (req, res) => {
     const limit = 10; // Número de elementos por página
     const offset = (page - 1) * limit;
     const query = req.query.query ? `%${req.query.query}%` : '%';
+    const orderColumn = req.query.orderColumn || 'id';
+    const orderDirection = req.query.orderDirection || 'desc';
 
     const totalItems = db.prepare('SELECT COUNT(*) AS count FROM items WHERE expediente LIKE ?').get(query).count;
     const totalPages = Math.ceil(totalItems / limit);
 
-    const items = db.prepare('SELECT * FROM items WHERE expediente LIKE ? ORDER BY id DESC LIMIT ? OFFSET ?').all(query, limit, offset);
+    const items = db.prepare(`SELECT * FROM items WHERE expediente LIKE ? ORDER BY ${orderColumn} ${orderDirection} LIMIT ? OFFSET ?`).all(query, limit, offset);
 
     res.json({
         success: true,
