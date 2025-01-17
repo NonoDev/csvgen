@@ -29,6 +29,7 @@
         <table class="striped">
             <thead>
                 <tr>
+                    <th>Id</th>
                     <th>CSV</th>
                     <th>Fecha</th>
                     <th>Expediente</th>
@@ -63,6 +64,10 @@
                                 row.setAttribute('data-id', item.id);
 
                                 row.innerHTML = `
+                                    <td>
+                                        <input type="text" value="${item.id}" class="id-input">
+                                        <i class="material-icons copy-icon" data-value="${item.id}">content_copy</i>
+                                    </td>
                                     <td>
                                         <input type="text" value="${item.csv}" class="csv-input">
                                         <i class="material-icons copy-icon" data-value="${item.csv}">content_copy</i>
