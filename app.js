@@ -69,6 +69,21 @@ app.post('/generate', (req, res) => {
         res.status(500).json({ success: false, error: 'Error al crear el ítem' });
     }
 });
+// Ruta para comprobar expedientes existentes
+app.post('/check-expediente', (req, res) => {
+    const { expediente } = req.body;
+    try {
+        const item = db.prepare('SELECT * FROM items WHERE expediente = ?').get(expediente);
+        if (item) {
+            res.json({ exists: true });
+        } else {
+            res.json({ exists: false });
+        }
+    } catch (error) {
+        console.error('Error al comprobar el expediente:', error);
+        res.status(500).json({ exists: false, error: 'Error al comprobar el expediente' });
+    }
+});
 
 app.get('/admin', isAuthenticated, (req, res) => {
     res.render('admin');

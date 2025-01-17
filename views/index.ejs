@@ -82,28 +82,43 @@
             const expediente = document.getElementById('expediente').innerText;
 
             if (csv && fecha && expediente) {
-                fetch('/generate', {
+                // Comprobar si el expediente ya existe
+                fetch('/check-expediente', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ csv, fecha, expediente })
+                    body: JSON.stringify({ expediente })
                 }).then(response => response.json()).then(data => {
-                    if (data.success) {
-                        alert('Datos guardados con éxito!');
-
+                    if (data.exists) {
+                        alert('El expediente ya existe en la base de datos.');
                     } else {
-                        alert('Error al guardar los datos.');
+                        // Guardar los datos si el expediente no existe
+                        fetch('/generate', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ csv, fecha, expediente })
+                        }).then(response => response.json()).then(data => {
+                            if (data.success) {
+                                alert('Datos guardados con éxito!');
+                            } else {
+                                alert('Error al guardar los datos.');
+                            }
+                        }).catch(error => {
+                            console.error('Error:', error);
+                            alert('Hubo un error al almacenar los datos.');
+                        });
                     }
                 }).catch(error => {
-                    console.error('Error:', error);
-                    alert('Hubo un error al almacenar los datos.');
+                    console.error('Error al comprobar el expediente:', error);
+                    alert('Hubo un error al comprobar el expediente.');
                 });
             } else {
                 alert('Por favor, genera primero los datos.');
             }
         });
-        
     </script>
 </body>
 </html>
