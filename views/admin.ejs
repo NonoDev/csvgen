@@ -18,6 +18,13 @@
             <button class="btn waves-effect waves-light" onclick="window.location.reload();">Actualizar Listado</button>
         </div>
 
+        <div class="row">
+            <div class="input-field col s6 offset-s3">
+                <input id="search" type="text" class="validate">
+                <label for="search">Buscar Expediente</label>
+            </div>
+        </div>
+
         <h3>Listado de Expedientes</h3>
         <table class="striped">
             <thead>
@@ -43,8 +50,8 @@
         document.addEventListener('DOMContentLoaded', () => {
             let currentPage = 1;
 
-            const loadItems = (page) => {
-                fetch(`/admin/items?page=${page}`)
+            const loadItems = (page, query = '') => {
+                fetch(`/admin/items?page=${page}&query=${query}`)
                     .then(response => response.json())
                     .then(data => {
                         if (data.success) {
@@ -182,6 +189,11 @@
                     pagination.appendChild(li);
                 }
             };
+
+            document.getElementById('search').addEventListener('input', (event) => {
+                const query = event.target.value.trim();
+                loadItems(1, query);
+            });
 
             loadItems(currentPage);
         });

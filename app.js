@@ -78,11 +78,12 @@ app.get('/admin/items', isAuthenticated, (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = 10; // Número de elementos por página
     const offset = (page - 1) * limit;
+    const query = req.query.query ? `%${req.query.query}%` : '%';
 
-    const totalItems = db.prepare('SELECT COUNT(*) AS count FROM items').get().count;
+    const totalItems = db.prepare('SELECT COUNT(*) AS count FROM items WHERE expediente LIKE ?').get(query).count;
     const totalPages = Math.ceil(totalItems / limit);
 
-    const items = db.prepare('SELECT * FROM items LIMIT ? OFFSET ?').all(limit, offset);
+    const items = db.prepare('SELECT * FROM items WHERE expediente LIKE ? LIMIT ? OFFSET ?').all(query, limit, offset);
 
     res.json({
         success: true,
