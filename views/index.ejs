@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LorryCSV - Generar CSV y QR</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+    <%- include('partials/navbar') %>
+    <div class="row">
+        <h2 class="titulo">Generar CSV y QR</h2>
+        <div class="col s4 offset-s4 z-depth-5">
+            <div class="container" id="contenedor">
+                <div id="result">
+                    <h5>Código CSV:</h5>
+                    <p id="csv-code"></p>
+                    <h5>Código QR:</h5>
+                    <div id="qrcode"></div>
+                    <h5>Fecha de Registro:</h5>
+                    <p id="registro-fecha"></p>
+                    <h5>Número de Expediente:</h5>
+                    <p id="expediente"></p>
+                </div>
+                <form id="action-form">
+                    <div class="row">
+                        <div class="col s4 offset-s2">
+                            <button class="btn waves-effect waves-light" id="generate-btn" type="button">Generar</button>
+                        </div>
+                        <div class="col s4">
+                            <button class="btn blue waves-effect waves-light" id="validate-store-btn" type="button">Guardar datos</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+    <script>
+        function generateRandomString(length) {
+            const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            let result = '';
+            for (let i = 0; i < length; i++) {
+                result += characters.charAt(Math.floor(Math.random() * characters.length));
+            }
+            return result;
+        }
+
+        document.getElementById('generate-btn').addEventListener('click', function() {
+            const now = new Date();
+            const datePart = now.toISOString().split('T')[0];
+            const timePart = now.toTimeString().split(' ')[0]; // Hora con formato HH:MM:SS
+            const dateWithTime = `${datePart} ${timePart}`; // Fecha y hora juntas
+            const datePartCleaned = datePart.replace(/-/g, '');
+            const timePartCleaned = timePart.replace(/:/g, '').substring(0, 4); // Reducimos la hora a HHMM
+            const randomPart = generateRandomString(12);
+            const csv = datePartCleaned + timePartCleaned + randomPart;
+            const yearPart = now.getFullYear().toString();
+            const expediente = yearPart + generateRandomString(6);
+
+            // Mostrar los datos en pantalla
+            document.getElementById('csv-code').innerText = csv;
+            document.getElementById('registro-fecha').innerText = datePart; // Solo la fecha, sin la hora
+            document.getElementById('expediente').innerText = expediente;
+
+            // Generar QR con los datos
+            const verificationUrl = `${window.location.origin}/verify?csv=${encodeURIComponent(csv)}&fecha=${encodeURIComponent(dateWithTime)}&expediente=${encodeURIComponent(expediente)}`;
+            const qrcodeContainer = document.getElementById('qrcode');
+            qrcodeContainer.innerHTML = ''; // Limpiar QR previo
+
+            const qr = qrcode(0, 'L');
+            qr.addData(verificationUrl);
+            qr.make();
+            qrcodeContainer.innerHTML = qr.createImgTag(4); // Tamaño de escala 4
+        });
+
+        document.getElementById('validate-store-btn').addEventListener('click', function() {
+            const csv = document.getElementById('csv-code').innerText;
+            const fecha = document.getElementById('registro-fecha').innerText;
+            const expediente = document.getElementById('expediente').innerText;
+            const hora = new Date().toTimeString().split(' ')[0]; // Hora en formato HH:MM:SS
+
+            if (csv && fecha && expediente) {
+                fetch('/generate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ csv, fecha: `${fecha} ${hora}`, expediente })
+                }).then(response => response.json()).then(data => {
+                    if (data.success) {
+                        alert('Datos guardados con éxito!');
+
+                    } else {
+                        alert('Error al guardar los datos.');
+                    }
+                }).catch(error => {
+                    console.error('Error:', error);
+                    alert('Hubo un error al almacenar los datos.');
+                });
+            } else {
+                alert('Por favor, genera primero los datos.');
+            }
+        });
+        
+    </script>
+</body>
+</html>

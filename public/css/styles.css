@@ -1,0 +1,58 @@
+/* Añade aquí los estilos personalizados */
+body {
+    font-family: Arial, sans-serif;
+}
+
+.container {
+    margin-top: 20px;
+}
+
+nav {
+    background-color: #00acc1; /* color primario de Materialize */
+    padding-left: 10%;
+    padding-right: 10%;
+}
+
+#contenedor {
+    align-items: center;
+    text-align: center; 
+    
+}
+
+#titvery {
+    padding: 20px;
+}
+
+#titvery p {
+    color: cadetblue;
+}
+.titulo {
+    
+    text-align: center;
+}
+
+.brand-logo {
+    padding-left: 20px;
+}
+td.right-align {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 10px; /* Espacio entre los íconos */
+}
+td.copy-icon{
+    justify-content: flex-end;
+}
+
+.copy-icon {
+    cursor: pointer;
+}
+
+.edit-icon {
+    cursor: pointer;
+}
+
+.delete-icon {
+    cursor: pointer;
+}
+

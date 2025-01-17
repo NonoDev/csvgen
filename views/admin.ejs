@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LorryCSV - Administración</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+    <link rel="stylesheet" href="/css/styles.css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+</head>
+<body>
+    <%- include('partials/navbar') %>
+
+    <div class="container">
+        <h1 class="center-align">Panel de Administración</h1>
+        
+        <div class="center-align" style="margin-bottom: 20px;">
+            <button class="btn waves-effect waves-light" onclick="window.location.reload();">Actualizar Listado</button>
+        </div>
+
+        <h3>Listado de Expedientes</h3>
+        <table class="striped">
+            <thead>
+                <tr>
+                    <th>CSV</th>
+                    <th>Fecha</th>
+                    <th>Expediente</th>
+                    <th class="right-align">Acciones</th>
+                </tr>
+            </thead>
+            <tbody id="items-table-body">
+                <!-- Los elementos se cargarán aquí dinámicamente -->
+            </tbody>
+        </table>
+        
+        <ul class="pagination center-align" id="pagination">
+            <!-- Los botones de paginación se cargarán aquí dinámicamente -->
+        </ul>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            let currentPage = 1;
+
+            const loadItems = (page) => {
+                fetch(`/admin/items?page=${page}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            const tbody = document.getElementById('items-table-body');
+                            tbody.innerHTML = '';
+
+                            data.items.forEach(item => {
+                                const row = document.createElement('tr');
+                                row.setAttribute('data-id', item.id);
+
+                                row.innerHTML = `
+                                    <td>
+                                        <input type="text" value="${item.csv}" class="csv-input">
+                                        <i class="material-icons copy-icon" data-value="${item.csv}">content_copy</i>
+                                    </td>
+                                    <td>
+                                        <input type="text" value="${item.fecha ? new Date(item.fecha).toISOString().split('T')[0] : 'Fecha no válida'}" class="fecha-input">
+                                        <i class="material-icons copy-icon" data-value="${item.fecha}">content_copy</i>
+                                    </td>
+                                    <td>
+                                        <input type="text" value="${item.expediente}" class="expediente-input">
+                                        <i class="material-icons copy-icon" data-value="${item.expediente}">content_copy</i>
+                                    </td>
+                                    <td class="right-align">
+                                        <button class="btn blue lighten-2 edit-btn" data-id="${item.id}">Editar</button>
+                                        <button class="btn red lighten-2 delete-btn" data-id="${item.id}">Eliminar</button>
+                                    </td>
+                                `;
+
+                                tbody.appendChild(row);
+                            });
+
+                            setupCopyIcons();
+                            setupEditButtons();
+                            setupDeleteButtons();
+                            setupPagination(data.totalPages, data.currentPage);
+                        } else {
+                            M.toast({html: 'Error al cargar los elementos'});
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error al cargar los elementos:', error);
+                    });
+            };
+
+            const setupCopyIcons = () => {
+                document.querySelectorAll('.copy-icon').forEach(icon => {
+                    icon.addEventListener('click', () => {
+                        const value = icon.getAttribute('data-value');
+                        navigator.clipboard.writeText(value).then(() => {
+                            M.toast({html: 'Texto copiado al portapapeles'});
+                        }).catch(err => {
+                            console.error('Error al copiar:', err);
+                        });
+                    });
+                });
+            };
+
+            const setupEditButtons = () => {
+                document.querySelectorAll('.edit-btn').forEach(button => {
+                    button.addEventListener('click', () => {
+                        const id = button.getAttribute('data-id');
+                        const row = document.querySelector(`tr[data-id="${id}"]`);
+                        const csv = row.querySelector('.csv-input').value.trim();
+                        const fecha = row.querySelector('.fecha-input').value.trim();
+                        const expediente = row.querySelector('.expediente-input').value.trim();
+
+                        const newCsv = prompt("Editar CSV:", csv);
+                        const newFecha = prompt("Editar Fecha:", fecha);
+                        const newExpediente = prompt("Editar Expediente:", expediente);
+
+                        if (newCsv && newFecha && newExpediente) {
+                            fetch(`/admin/edit/${id}`, {
+                                method: 'PUT',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({ csv: newCsv, fecha: newFecha, expediente: newExpediente })
+                            }).then(response => response.json()).then(data => {
+                                if (data.success) {
+                                    M.toast({html: 'Elemento editado con éxito'});
+                                    loadItems(currentPage);
+                                } else {
+                                    M.toast({html: 'Error al editar el elemento'});
+                                }
+                            }).catch(error => {
+                                console.error('Error al editar:', error);
+                            });
+                        }
+                    });
+                });
+            };
+
+            const setupDeleteButtons = () => {
+                document.querySelectorAll('.delete-btn').forEach(button => {
+                    button.addEventListener('click', () => {
+                        const id = button.getAttribute('data-id');
+                        if (confirm('¿Estás seguro de que deseas eliminar este elemento?')) {
+                            fetch(`/admin/delete/${id}`, {
+                                method: 'DELETE'
+                            }).then(response => response.json()).then(data => {
+                                if (data.success) {
+                                    M.toast({html: 'Elemento eliminado con éxito'});
+                                    loadItems(currentPage);
+                                } else {
+                                    M.toast({html: 'Error al eliminar el elemento'});
+                                }
+                            }).catch(error => {
+                                console.error('Error al eliminar:', error);
+                            });
+                        }
+                    });
+                });
+            };
+
+            const setupPagination = (totalPages, currentPage) => {
+                const pagination = document.getElementById('pagination');
+                pagination.innerHTML = '';
+
+                for (let i = 1; i <= totalPages; i++) {
+                    const li = document.createElement('li');
+                    li.classList.add('waves-effect');
+                    if (i === currentPage) {
+                        li.classList.add('active');
+                    }
+
+                    const a = document.createElement('a');
+                    a.href = '#!';
+                    a.innerText = i;
+                    a.addEventListener('click', () => {
+                        loadItems(i);
+                    });
+
+                    li.appendChild(a);
+                    pagination.appendChild(li);
+                }
+            };
+
+            loadItems(currentPage);
+        });
+    </script>
+</body>
+</html>
