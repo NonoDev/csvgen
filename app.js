@@ -3,7 +3,8 @@ const path = require('path');
 const session = require('express-session');
 const bcrypt = require('bcrypt');
 const fs = require('fs');
-const { Sequelize, DataTypes } = require('sequelize');
+const betterSqlite3 = require('better-sqlite3');
+
 const app = express();
 
 // Configuración de vistas y middleware
@@ -23,30 +24,19 @@ app.use(
     })
 );
 
-// Configuración de la base de datos SQLite en /tmp
-const originalDbPath = path.join(__dirname, 'database.sqlite');
-const projectDir = __dirname;
-const tempDbPath = path.join(projectDir, 'tmp', 'database.sqlite');
+// Configuración de la base de datos SQLite con better-sqlite3
+const dbPath = path.join(__dirname, 'tmp', 'database.sqlite');
+const db = betterSqlite3(dbPath, { verbose: console.log });
 
-// Copiar la base de datos al directorio temporal si no existe
-if (!fs.existsSync(tempDbPath)) {
-    fs.copyFileSync(originalDbPath, tempDbPath);
-    console.log('Base de datos copiada a /tmp');
-}
-
-// Conexión a la base de datos
-const sequelize = new Sequelize({
-    dialect: 'sqlite',
-    storage: tempDbPath,
-    logging: false,
-});
-
-// Definición del modelo `Item`
-const Item = sequelize.define('Item', {
-    csv: { type: DataTypes.STRING, allowNull: false },
-    fecha: { type: DataTypes.STRING, allowNull: false },
-    expediente: { type: DataTypes.STRING, allowNull: false },
-});
+// Crear tabla si no existe
+db.prepare(`
+    CREATE TABLE IF NOT EXISTS items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        csv TEXT NOT NULL,
+        fecha TEXT NOT NULL,
+        expediente TEXT NOT NULL
+    )
+`).run();
 
 // Usuario admin predefinido
 const user = {
@@ -67,10 +57,11 @@ app.get('/', (req, res) => {
     res.render('index', { csv: '', fecha: '', expediente: '' });
 });
 
-app.post('/generate', async (req, res) => {
+app.post('/generate', (req, res) => {
+    const { csv, fecha, expediente } = req.body;
+    const stmt = db.prepare('INSERT INTO items (csv, fecha, expediente) VALUES (?, ?, ?)');
     try {
-        const { csv, fecha, expediente } = req.body;
-        await Item.create({ csv, fecha, expediente });
+        stmt.run(csv, fecha, expediente);
         res.json({ success: true });
     } catch (error) {
         console.error('Error al crear el ítem:', error);
@@ -78,17 +69,61 @@ app.post('/generate', async (req, res) => {
     }
 });
 
-app.get('/admin', isAuthenticated, async (req, res) => {
+app.get('/admin', isAuthenticated, (req, res) => {
+    res.render('admin');
+});
+
+app.get('/admin/items', isAuthenticated, (req, res) => {
+    const page = parseInt(req.query.page) || 1;
+    const limit = 10; // Número de elementos por página
+    const offset = (page - 1) * limit;
+
+    const totalItems = db.prepare('SELECT COUNT(*) AS count FROM items').get().count;
+    const totalPages = Math.ceil(totalItems / limit);
+
+    const items = db.prepare('SELECT * FROM items LIMIT ? OFFSET ?').all(limit, offset);
+
+    res.json({
+        success: true,
+        items,
+        totalPages,
+        currentPage: page
+    });
+});
+
+app.put('/admin/edit/:id', isAuthenticated, (req, res) => {
+    const id = req.params.id;
+    const { csv, fecha, expediente } = req.body;
     try {
-        const items = await Item.findAll();
-        res.render('admin', { items });
+        const stmt = db.prepare('UPDATE items SET csv = ?, fecha = ?, expediente = ? WHERE id = ?');
+        const result = stmt.run(csv, fecha, expediente, id);
+        if (result.changes > 0) {
+            res.json({ success: true });
+        } else {
+            res.json({ success: false, error: 'Elemento no encontrado' });
+        }
     } catch (error) {
-        console.error('Error al recuperar ítems:', error);
-        res.status(500).send('Error al recuperar ítems');
+        console.error('Error al editar el ítem:', error);
+        res.status(500).json({ success: false, error: 'Error al editar el ítem' });
     }
 });
 
-// Resto de las rutas (admin, login, verify, etc.)
+app.delete('/admin/delete/:id', isAuthenticated, (req, res) => {
+    const id = req.params.id;
+    try {
+        const stmt = db.prepare('DELETE FROM items WHERE id = ?');
+        const result = stmt.run(id);
+        if (result.changes > 0) {
+            res.json({ success: true });
+        } else {
+            res.json({ success: false, error: 'Elemento no encontrado' });
+        }
+    } catch (error) {
+        console.error('Error al eliminar el ítem:', error);
+        res.status(500).json({ success: false, error: 'Error al eliminar el ítem' });
+    }
+});
+
 app.get('/login', (req, res) => res.render('login'));
 app.post('/login', (req, res) => {
     const { username, password } = req.body;
@@ -112,6 +147,30 @@ app.get('/logout', (req, res) => {
         res.redirect('/');
     });
 });
+// Ruta de verificación
+app.get('/verify', (req, res) => {
+    res.render('verify');
+});
+
+// Ruta para la comprobación del formulario de verificación
+app.post('/verify', (req, res) => {
+    try {
+        const { csvCode, fecha, expediente } = req.body;
+        console.log('Verificando datos:', { csvCode, fecha, expediente });
+
+        // Buscar el registro en la base de datos
+        const item = db.prepare('SELECT * FROM items WHERE csv = ? AND fecha = ? AND expediente = ?').get(csvCode, fecha, expediente);
+
+        if (item) {
+            res.json({ valid: true });
+        } else {
+            res.json({ valid: false });
+        }
+    } catch (error) {
+        console.error('Error al verificar:', error);
+        res.status(500).json({ valid: false, error: 'Error al verificar el código' });
+    }
+});
 
 function isAuthenticated(req, res, next) {
     if (req.session.userId) return next();
@@ -120,13 +179,6 @@ function isAuthenticated(req, res, next) {
 
 // Conexión del servidor
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, async () => {
-    try {
-        await sequelize.authenticate();
-        console.log('Conexión con la base de datos establecida.');
-        await sequelize.sync(); // Sincroniza el modelo con la base de datos
-        console.log(`Servidor ejecutándose en el puerto ${PORT}`);
-    } catch (error) {
-        console.error('Error al conectar con la base de datos:', error);
-    }
+app.listen(PORT, () => {
+    console.log(`Servidor ejecutándose en el puerto ${PORT}`);
 });

@@ -80,7 +80,6 @@
             const csv = document.getElementById('csv-code').innerText;
             const fecha = document.getElementById('registro-fecha').innerText;
             const expediente = document.getElementById('expediente').innerText;
-            const hora = new Date().toTimeString().split(' ')[0]; // Hora en formato HH:MM:SS
 
             if (csv && fecha && expediente) {
                 fetch('/generate', {
@@ -88,7 +87,7 @@
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ csv, fecha: `${fecha} ${hora}`, expediente })
+                    body: JSON.stringify({ csv, fecha, expediente })
                 }).then(response => response.json()).then(data => {
                     if (data.success) {
                         alert('Datos guardados con éxito!');
