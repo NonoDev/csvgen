@@ -15,16 +15,16 @@
         <p>Introduce el CSV, fecha y Expediente que hay en tu documento. Si es válido podrás verficar su autenticidad</P>
         <form id="verify-form">
             <div class="input-field">
-                <input id="csv-code" type="text" required>
-                <label for="csv-code">Código CSV</label>
+                <input id="csv-code" type="text" required value="<%= csv %>">
+                <label for="csv-code" class="active">Código CSV</label>
             </div>
             <div class="input-field">
-                <input id="fecha" type="text" required>
-                <label for="fecha">Fecha (dd-mm-aaaa)</label>
+                <input id="fecha" type="text" required value="<%= fecha %>">
+                <label for="fecha" class="active">Fecha (dd-mm-aaaa)</label>
             </div>
             <div class="input-field">
-                <input id="expediente" type="text" required>
-                <label for="expediente">Expediente</label>
+                <input id="expediente" type="text" required value="<%= expediente %>">
+                <label for="expediente" class="active">Expediente</label>
             </div>
             <button class="btn waves-effect waves-light" type="submit">Verificar</button>
         </form>
@@ -52,6 +52,39 @@
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
-    <script src="/js/verify.js"></script>
+    <script>
+        document.getElementById('verify-form').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const csvCode = document.getElementById('csv-code').value.trim();
+            const fecha = document.getElementById('fecha').value.trim();
+            const expediente = document.getElementById('expediente').value.trim();
+
+            fetch('/verify', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ csvCode, fecha, expediente })
+            }).then(response => response.json()).then(data => {
+                const successModal = M.Modal.getInstance(document.getElementById('success-modal'));
+                const errorModal = M.Modal.getInstance(document.getElementById('error-modal'));
+                if (data.valid) {
+                    successModal.open();
+                } else {
+                    errorModal.open();
+                }
+            }).catch(error => {
+                console.error('Error al verificar el código:', error);
+                const errorModal = M.Modal.getInstance(document.getElementById('error-modal'));
+                errorModal.open();
+            });
+        });
+
+        // Initialize modals
+        document.addEventListener('DOMContentLoaded', function() {
+            const modals = document.querySelectorAll('.modal');
+            M.Modal.init(modals);
+        });
+    </script>
 </body>
 </html>

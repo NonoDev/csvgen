@@ -66,7 +66,7 @@
             document.getElementById('expediente').innerText = expediente;
 
             // Generar QR con los datos
-            const verificationUrl = `${window.location.origin}/verify?csv=${encodeURIComponent(csv)}&fecha=${encodeURIComponent(dateWithTime)}&expediente=${encodeURIComponent(expediente)}`;
+            const verificationUrl = `${window.location.origin}/verify?csv=${encodeURIComponent(csv)}&fecha=${encodeURIComponent(datePart)}&expediente=${encodeURIComponent(expediente)}`;
             const qrcodeContainer = document.getElementById('qrcode');
             qrcodeContainer.innerHTML = ''; // Limpiar QR previo
 

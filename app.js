@@ -168,7 +168,8 @@ app.get('/logout', (req, res) => {
 });
 // Ruta de verificación
 app.get('/verify', (req, res) => {
-    res.render('verify');
+    const { csv, fecha, expediente } = req.query;
+    res.render('verify', { csv, fecha, expediente });
 });
 
 // Ruta para la comprobación del formulario de verificación
