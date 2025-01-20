@@ -19,10 +19,15 @@ nav {
     
 }
 
-.nav-wrapper {
+nav {
     background-color: white !important;
+    color: black !important;
+    padding-bottom: 80px;
 }
-
+nav ul a {
+    color: black !important;
+    padding-bottom: 17px;
+}
 .nav-wrapper .brand-logo img {
     width: 150px;
 }
