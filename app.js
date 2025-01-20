@@ -25,8 +25,8 @@ app.use(
 );
 
 // Configuración de la base de datos SQLite con better-sqlite3
-//const dbPath = path.join('/tmp', 'database.sqlite');
-const dbPath = path.join(__dirname, 'tmp', 'database.sqlite');
+const dbPath = path.join('/tmp', 'database.sqlite');
+//const dbPath = path.join(__dirname, 'tmp', 'database.sqlite');
 const db = betterSqlite3(dbPath, { verbose: console.log });
 
 // Crear tabla si no existe
@@ -143,7 +143,9 @@ app.delete('/admin/delete/:id', isAuthenticated, (req, res) => {
     }
 });
 
-app.get('/login', (req, res) => res.render('login'));
+app.get('/login', (req, res) => {
+    res.render('login', { redirectTo: req.query.redirectTo || '/' });
+});
 app.post('/login', (req, res) => {
     const { username, password } = req.body;
     if (username === user.username) {

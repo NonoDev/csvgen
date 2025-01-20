@@ -17,6 +17,7 @@
                     <div class="card-content">
                         <span class="card-title center-align">Login</span>
                         <form method="POST" action="/login">
+                            <input type="hidden" name="redirectTo" value="<%= redirectTo %>">
                             <div class="input-field">
                                 <label for="username">Username:</label>
                                 <input type="text" id="username" name="username" required>
@@ -34,7 +35,5 @@
             </div>
         </div>
     </div>
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
 </body>
 </html>
