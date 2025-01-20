@@ -19,6 +19,14 @@ nav {
     
 }
 
+.nav-wrapper {
+    background-color: white !important;
+}
+
+.nav-wrapper .brand-logo img {
+    width: 150px;
+}
+
 #titvery {
     padding: 20px;
 }
