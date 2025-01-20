@@ -19,7 +19,7 @@
                     <h5>Código QR:</h5>
                     <div id="qrcode"></div>
                     <h5>Fecha de Registro:</h5>
-                    <p id="registro-fecha"></p>
+                    <input type="text" id="registro-fecha" class="datepicker">
                     <h5>Número de Expediente:</h5>
                     <p id="expediente"></p>
                 </div>
@@ -39,6 +39,14 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
     <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const dateElems = document.querySelectorAll('.datepicker');
+            M.Datepicker.init(dateElems, {
+                format: 'yyyy-mm-dd',
+                autoClose: true
+            });
+        });
+
         function generateRandomString(length) {
             const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
             let result = '';
@@ -50,7 +58,7 @@
 
         document.getElementById('generate-btn').addEventListener('click', function() {
             const now = new Date();
-            const datePart = now.toISOString().split('T')[0];
+            const datePart = document.getElementById('registro-fecha').value || now.toISOString().split('T')[0];
             const timePart = now.toTimeString().split(' ')[0]; // Hora con formato HH:MM:SS
             const dateWithTime = `${datePart} ${timePart}`; // Fecha y hora juntas
             const datePartCleaned = datePart.replace(/-/g, '');
@@ -62,7 +70,7 @@
 
             // Mostrar los datos en pantalla
             document.getElementById('csv-code').innerText = csv;
-            document.getElementById('registro-fecha').innerText = datePart; // Solo la fecha, sin la hora
+            document.getElementById('registro-fecha').value = datePart; // Solo la fecha, sin la hora
             document.getElementById('expediente').innerText = expediente;
 
             // Generar QR con los datos
@@ -78,7 +86,7 @@
 
         document.getElementById('validate-store-btn').addEventListener('click', function() {
             const csv = document.getElementById('csv-code').innerText;
-            const fecha = document.getElementById('registro-fecha').innerText;
+            const fecha = document.getElementById('registro-fecha').value;
             const expediente = document.getElementById('expediente').innerText;
 
             if (csv && fecha && expediente) {
