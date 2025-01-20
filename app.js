@@ -54,11 +54,11 @@ bcrypt.hash(plainPassword, 10, (err, hash) => {
 });
 
 // Rutas de la aplicación
-app.get('/', (req, res) => {
+app.get('/', isAuthenticated, (req, res) => {
     res.render('index', { csv: '', fecha: '', expediente: '' });
 });
 
-app.post('/generate', (req, res) => {
+app.post('/generate', isAuthenticated, (req, res) => {
     const { csv, fecha, expediente } = req.body;
     const stmt = db.prepare('INSERT INTO items (csv, fecha, expediente) VALUES (?, ?, ?)');
     try {
@@ -70,7 +70,7 @@ app.post('/generate', (req, res) => {
     }
 });
 // Ruta para comprobar expedientes existentes
-app.post('/check-expediente', (req, res) => {
+app.post('/check-expediente', isAuthenticated, (req, res) => {
     const { expediente } = req.body;
     try {
         const item = db.prepare('SELECT * FROM items WHERE expediente = ?').get(expediente);
