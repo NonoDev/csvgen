@@ -29,13 +29,14 @@ app.use(
 const dbPath = path.join(__dirname, 'tmp', 'database.sqlite');
 const db = betterSqlite3(dbPath, { verbose: console.log });
 
-// Crear tabla si no existe
+// Eliminar la tabla si existe y crearla de nuevo con la nueva estructura
 db.prepare(`
     CREATE TABLE IF NOT EXISTS items (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         csv TEXT NOT NULL,
         fecha TEXT NOT NULL,
-        expediente TEXT NOT NULL
+        expediente TEXT NOT NULL,
+        qr_image BLOB
     )
 `).run();
 
@@ -59,16 +60,18 @@ app.get('/', isAuthenticated, (req, res) => {
 });
 
 app.post('/generate', isAuthenticated, (req, res) => {
-    const { csv, fecha, expediente } = req.body;
-    const stmt = db.prepare('INSERT INTO items (csv, fecha, expediente) VALUES (?, ?, ?)');
+    const { csv, fecha, expediente, qr_image } = req.body;
+    const qrImageBuffer = Buffer.from(qr_image.split(',')[1], 'base64'); // Convertir la imagen base64 a un buffer
+    const stmt = db.prepare('INSERT INTO items (csv, fecha, expediente, qr_image) VALUES (?, ?, ?, ?)');
     try {
-        stmt.run(csv, fecha, expediente);
+        stmt.run(csv, fecha, expediente, qrImageBuffer);
         res.json({ success: true });
     } catch (error) {
         console.error('Error al crear el ítem:', error);
         res.status(500).json({ success: false, error: 'Error al crear el ítem' });
     }
 });
+
 // Ruta para comprobar expedientes existentes
 app.post('/check-expediente', isAuthenticated, (req, res) => {
     const { expediente } = req.body;
@@ -112,10 +115,11 @@ app.get('/admin/items', isAuthenticated, (req, res) => {
 
 app.put('/admin/edit/:id', isAuthenticated, (req, res) => {
     const id = req.params.id;
-    const { csv, fecha, expediente } = req.body;
+    const { csv, fecha, expediente, qr_image } = req.body;
+    const qrImageBuffer = Buffer.from(qr_image.split(',')[1], 'base64'); // Convertir la imagen base64 a un buffer
     try {
-        const stmt = db.prepare('UPDATE items SET csv = ?, fecha = ?, expediente = ? WHERE id = ?');
-        const result = stmt.run(csv, fecha, expediente, id);
+        const stmt = db.prepare('UPDATE items SET csv = ?, fecha = ?, expediente = ?, qr_image = ? WHERE id = ?');
+        const result = stmt.run(csv, fecha, expediente, qrImageBuffer, id);
         if (result.changes > 0) {
             res.json({ success: true });
         } else {
@@ -146,6 +150,7 @@ app.delete('/admin/delete/:id', isAuthenticated, (req, res) => {
 app.get('/login', (req, res) => {
     res.render('login', { redirectTo: req.query.redirectTo || '/' });
 });
+
 app.post('/login', (req, res) => {
     const { username, password } = req.body;
     if (username === user.username) {
@@ -168,6 +173,7 @@ app.get('/logout', (req, res) => {
         res.redirect('/');
     });
 });
+
 // Ruta de verificación
 app.get('/verify', (req, res) => {
     const { csv, fecha, expediente } = req.query;

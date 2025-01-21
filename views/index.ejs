@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LorryCSV - Generar CSV y QR</title>
+    <title>Invemtec - Generar CSV y QR</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
     <link rel="stylesheet" href="/css/styles.css">
 </head>
@@ -89,8 +89,10 @@
             const csv = document.getElementById('csv-code').innerText;
             const fecha = document.getElementById('registro-fecha').value;
             const expediente = document.getElementById('expediente').value.trim();
+            const qrcodeContainer = document.getElementById('qrcode');
+            const qrImage = qrcodeContainer.querySelector('img').src;
 
-            if (csv && fecha && expediente) {
+            if (csv && fecha && expediente && qrImage) {
                 // Comprobar si el expediente ya existe
                 fetch('/check-expediente', {
                     method: 'POST',
@@ -108,7 +110,7 @@
                             headers: {
                                 'Content-Type': 'application/json'
                             },
-                            body: JSON.stringify({ csv, fecha, expediente })
+                            body: JSON.stringify({ csv, fecha, expediente, qr_image: qrImage })
                         }).then(response => response.json()).then(data => {
                             if (data.success) {
                                 alert('Datos guardados con éxito!');
