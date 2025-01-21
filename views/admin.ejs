@@ -10,7 +10,7 @@
 </head>
 <body>
     <%- include('partials/navbar') %>
-
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
     <div class="container">
         <h1 class="center-align">Panel de Administración</h1>
         
@@ -34,6 +34,7 @@
                     <th>Fecha</th>
                     <th>CSV</th>
                     <th>Expediente</th>
+                    <th>QR</th>
                     <th class="right-align">Acciones</th>
                 </tr>
             </thead>
@@ -104,6 +105,9 @@
                                     <td>
                                         <input type="text" value="${item.expediente}" class="expediente-input" disabled>
                                         <i class="material-icons copy-icon" data-value="${item.expediente}">content_copy</i>
+                                    </td>
+                                    <td>
+                                        <img src="data:image/png;base64,${item.qr_image.toString('base64')}" alt="QR Code" style="width: 70px; height: 70px;">
                                     </td>
                                     <td class="right-align">
                                         <button class="btn blue lighten-2 edit-btn" data-id="${item.id}">Editar</button>

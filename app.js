@@ -25,8 +25,8 @@ app.use(
 );
 
 // Configuración de la base de datos SQLite con better-sqlite3
-//const dbPath = path.join('/tmp', 'database.sqlite');
-const dbPath = path.join(__dirname, 'tmp', 'database.sqlite');
+const dbPath = path.join('/tmp', 'database.sqlite');
+// const dbPath = path.join(__dirname, 'tmp', 'database.sqlite');
 const db = betterSqlite3(dbPath, { verbose: console.log });
 
 // Eliminar la tabla si existe y crearla de nuevo con la nueva estructura
@@ -105,6 +105,13 @@ app.get('/admin/items', isAuthenticated, (req, res) => {
 
     const items = db.prepare(`SELECT * FROM items WHERE expediente LIKE ? ORDER BY ${orderColumn} ${orderDirection} LIMIT ? OFFSET ?`).all(query, limit, offset);
 
+    // Convertir el buffer de la imagen QR a base64
+    items.forEach(item => {
+        if (item.qr_image) {
+            item.qr_image = item.qr_image.toString('base64');
+        }
+    });
+
     res.json({
         success: true,
         items,
@@ -116,15 +123,23 @@ app.get('/admin/items', isAuthenticated, (req, res) => {
 app.put('/admin/edit/:id', isAuthenticated, (req, res) => {
     const id = req.params.id;
     const { csv, fecha, expediente, qr_image } = req.body;
-    const qrImageBuffer = Buffer.from(qr_image.split(',')[1], 'base64'); // Convertir la imagen base64 a un buffer
+
+    let qrImageBuffer = null;
+    if (qr_image) {
+        qrImageBuffer = Buffer.from(qr_image.split(',')[1], 'base64'); // Convertir la imagen base64 a un buffer
+    }
+
     try {
-        const stmt = db.prepare('UPDATE items SET csv = ?, fecha = ?, expediente = ?, qr_image = ? WHERE id = ?');
-        const result = stmt.run(csv, fecha, expediente, qrImageBuffer, id);
-        if (result.changes > 0) {
-            res.json({ success: true });
+        let stmt;
+        if (qrImageBuffer) {
+            stmt = db.prepare('UPDATE items SET csv = ?, fecha = ?, expediente = ?, qr_image = ? WHERE id = ?');
+            stmt.run(csv, fecha, expediente, qrImageBuffer, id);
         } else {
-            res.json({ success: false, error: 'Elemento no encontrado' });
+            stmt = db.prepare('UPDATE items SET csv = ?, fecha = ?, expediente = ? WHERE id = ?');
+            stmt.run(csv, fecha, expediente, id);
         }
+
+        res.json({ success: true });
     } catch (error) {
         console.error('Error al editar el ítem:', error);
         res.status(500).json({ success: false, error: 'Error al editar el ítem' });

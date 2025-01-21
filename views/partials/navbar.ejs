@@ -6,23 +6,37 @@
         <a href="#" data-target="mobile-demo" class="sidenav-trigger"><i class="material-icons">menu</i></a>
         <ul id="nav-mobile" class="right hide-on-med-and-down">
             <li><a href="http://invemtec.es/">Invemtec</a></li>
-            <li><a href="/">Generar</a></li>
             <li><a href="/verify">Verificar</a></li>
-            <li><a href="/admin">Administración</a></li>
+            <li>
+                <a class="dropdown-trigger" href="#!" data-target="dropdown1">Área Privada ↓</a>
+            </li>
         </ul>
     </div>
 </nav>
 
-<ul class="sidenav" id="mobile-demo">
-    <li><a href="http://invemtec.es/">Invemtec</a></li>
+<!-- Dropdown Structure -->
+<ul id="dropdown1" class="dropdown-content">
     <li><a href="/">Generar</a></li>
-    <li><a href="/verify">Verificar</a></li>
     <li><a href="/admin">Administración</a></li>
 </ul>
 
+<ul class="sidenav" id="mobile-demo">
+    <li><a href="http://invemtec.es/">Invemtec</a></li>
+    <li><a href="/verify">Verificar</a></li>
+    <li><a href="/">Generar</a></li>
+    <li><a href="/admin">Administración</a></li>
+</ul>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        const elems = document.querySelectorAll('.sidenav');
-        M.Sidenav.init(elems);
+        const elemsSidenav = document.querySelectorAll('.sidenav');
+        M.Sidenav.init(elemsSidenav);
+
+        const elemsDropdown = document.querySelectorAll('.dropdown-trigger');
+        M.Dropdown.init(elemsDropdown, {
+            coverTrigger: false,
+            constrainWidth: false
+        });
     });
 </script>
