@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Invemtec - Generar CSV y QR</title>
+    <title>LorryCSV - Generar CSV y QR</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
     <link rel="stylesheet" href="/css/styles.css">
 </head>
@@ -21,7 +21,7 @@
                     <h5>Fecha de Registro:</h5>
                     <input type="text" id="registro-fecha" class="datepicker">
                     <h5>Número de Expediente:</h5>
-                    <p id="expediente"></p>
+                    <input type="text" id="expediente" class="validate">
                 </div>
                 <form id="action-form">
                     <div class="row">
@@ -66,12 +66,13 @@
             const randomPart = generateRandomString(12);
             const csv = datePartCleaned + timePartCleaned + randomPart;
             const yearPart = now.getFullYear().toString();
-            const expediente = yearPart + generateRandomString(6);
+            const expedienteInput = document.getElementById('expediente').value.trim();
+            const expediente = expedienteInput || yearPart + generateRandomString(6);
 
             // Mostrar los datos en pantalla
             document.getElementById('csv-code').innerText = csv;
             document.getElementById('registro-fecha').value = datePart; // Solo la fecha, sin la hora
-            document.getElementById('expediente').innerText = expediente;
+            document.getElementById('expediente').value = expediente;
 
             // Generar QR con los datos
             const verificationUrl = `${window.location.origin}/verify?csv=${encodeURIComponent(csv)}&fecha=${encodeURIComponent(datePart)}&expediente=${encodeURIComponent(expediente)}`;
@@ -87,7 +88,7 @@
         document.getElementById('validate-store-btn').addEventListener('click', function() {
             const csv = document.getElementById('csv-code').innerText;
             const fecha = document.getElementById('registro-fecha').value;
-            const expediente = document.getElementById('expediente').innerText;
+            const expediente = document.getElementById('expediente').value.trim();
 
             if (csv && fecha && expediente) {
                 // Comprobar si el expediente ya existe
