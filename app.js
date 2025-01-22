@@ -73,9 +73,13 @@ bcrypt.hash(plainPassword, 10, async (err, hash) => {
 });
 
 // Middleware para verificar la conexión a la base de datos
-app.use((req, res, next) => {
+app.use(async (req, res, next) => {
     if (!connection) {
-        return res.status(500).json({ success: false, error: 'No hay conexión a la base de datos' });
+        try {
+            await connectToDatabase();
+        } catch (error) {
+            return res.status(500).json({ success: false, error: 'No hay conexión a la base de datos' });
+        }
     }
     next();
 });
