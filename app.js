@@ -186,11 +186,12 @@ app.get('/login', (req, res) => {
 
 app.post('/login', (req, res) => {
     const { username, password } = req.body;
+    const redirectTo = req.body.redirectTo || '/admin';
     if (username === user.username) {
         bcrypt.compare(password, user.passwordHash, (err, result) => {
             if (result) {
                 req.session.userId = user.username;
-                res.redirect('/admin');
+                res.redirect(redirectTo);
             } else {
                 res.send('Contraseña incorrecta');
             }
@@ -235,7 +236,7 @@ app.post('/verify', async (req, res) => {
 
 function isAuthenticated(req, res, next) {
     if (req.session.userId) return next();
-    res.redirect('/login');
+    res.redirect(`/login?redirectTo=${encodeURIComponent(req.originalUrl)}`);
 }
 
 // Conexión del servidor
