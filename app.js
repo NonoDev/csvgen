@@ -2,8 +2,7 @@ const express = require('express');
 const path = require('path');
 const session = require('express-session');
 const bcrypt = require('bcrypt');
-const fs = require('fs');
-const betterSqlite3 = require('better-sqlite3');
+const mysql = require('mysql2/promise');
 
 const app = express();
 
@@ -24,21 +23,35 @@ app.use(
     })
 );
 
-// Configuración de la base de datos SQLite con better-sqlite3
-const dbPath = path.join('/tmp', 'database.sqlite');
-// const dbPath = path.join(__dirname, 'tmp', 'database.sqlite');
-const db = betterSqlite3(dbPath, { verbose: console.log });
+// Configuración de la base de datos MySQL
+const dbConfig = {
+    host: 'qaln280.invemtec.es', // Cambia esto por tu host de MySQL
+    user: 'qaln280', // Cambia esto por tu usuario de MySQL
+    password: '123Lorryges', // Cambia esto por tu contraseña de MySQL
+    database: 'qaln280' // Cambia esto por tu base de datos de MySQL
+};
 
-// Eliminar la tabla si existe y crearla de nuevo con la nueva estructura
-db.prepare(`
-    CREATE TABLE IF NOT EXISTS items (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        csv TEXT NOT NULL,
-        fecha TEXT NOT NULL,
-        expediente TEXT NOT NULL,
-        qr_image BLOB
-    )
-`).run();
+let connection;
+
+async function connectToDatabase() {
+    connection = await mysql.createConnection(dbConfig);
+    console.log('Conectado a la base de datos MySQL');
+
+    // Crear tabla si no existe
+    await connection.execute(`
+        CREATE TABLE IF NOT EXISTS items (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            csv TEXT NOT NULL,
+            fecha TEXT NOT NULL,
+            expediente TEXT NOT NULL,
+            qr_image BLOB
+        )
+    `);
+}
+
+connectToDatabase().catch(err => {
+    console.error('Error al conectar a la base de datos MySQL:', err);
+});
 
 // Usuario admin predefinido
 const user = {
@@ -48,7 +61,7 @@ const user = {
 
 // Contraseña y registro
 const plainPassword = '12Admin@2025';
-bcrypt.hash(plainPassword, 10, (err, hash) => {
+bcrypt.hash(plainPassword, 10, async (err, hash) => {
     if (err) throw err;
     user.passwordHash = hash;
     console.log('Usuario registrado con hash:', hash);
@@ -59,12 +72,12 @@ app.get('/', isAuthenticated, (req, res) => {
     res.render('index', { csv: '', fecha: '', expediente: '' });
 });
 
-app.post('/generate', isAuthenticated, (req, res) => {
+app.post('/generate', isAuthenticated, async (req, res) => {
     const { csv, fecha, expediente, qr_image } = req.body;
     const qrImageBuffer = Buffer.from(qr_image.split(',')[1], 'base64'); // Convertir la imagen base64 a un buffer
-    const stmt = db.prepare('INSERT INTO items (csv, fecha, expediente, qr_image) VALUES (?, ?, ?, ?)');
+
     try {
-        stmt.run(csv, fecha, expediente, qrImageBuffer);
+        await connection.execute('INSERT INTO items (csv, fecha, expediente, qr_image) VALUES (?, ?, ?, ?)', [csv, fecha, expediente, qrImageBuffer]);
         res.json({ success: true });
     } catch (error) {
         console.error('Error al crear el ítem:', error);
@@ -73,11 +86,11 @@ app.post('/generate', isAuthenticated, (req, res) => {
 });
 
 // Ruta para comprobar expedientes existentes
-app.post('/check-expediente', isAuthenticated, (req, res) => {
+app.post('/check-expediente', isAuthenticated, async (req, res) => {
     const { expediente } = req.body;
     try {
-        const item = db.prepare('SELECT * FROM items WHERE expediente = ?').get(expediente);
-        if (item) {
+        const [rows] = await connection.execute('SELECT * FROM items WHERE expediente = ?', [expediente]);
+        if (rows.length > 0) {
             res.json({ exists: true });
         } else {
             res.json({ exists: false });
@@ -92,7 +105,7 @@ app.get('/admin', isAuthenticated, (req, res) => {
     res.render('admin');
 });
 
-app.get('/admin/items', isAuthenticated, (req, res) => {
+app.get('/admin/items', isAuthenticated, async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = 10; // Número de elementos por página
     const offset = (page - 1) * limit;
@@ -100,27 +113,33 @@ app.get('/admin/items', isAuthenticated, (req, res) => {
     const orderColumn = req.query.orderColumn || 'id';
     const orderDirection = req.query.orderDirection || 'desc';
 
-    const totalItems = db.prepare('SELECT COUNT(*) AS count FROM items WHERE expediente LIKE ?').get(query).count;
-    const totalPages = Math.ceil(totalItems / limit);
+    try {
+        const [totalItemsResult] = await connection.execute('SELECT COUNT(*) AS count FROM items WHERE expediente LIKE ?', [query]);
+        const totalItems = totalItemsResult[0].count;
+        const totalPages = Math.ceil(totalItems / limit);
 
-    const items = db.prepare(`SELECT * FROM items WHERE expediente LIKE ? ORDER BY ${orderColumn} ${orderDirection} LIMIT ? OFFSET ?`).all(query, limit, offset);
+        const [items] = await connection.execute(`SELECT * FROM items WHERE expediente LIKE ? ORDER BY ${orderColumn} ${orderDirection} LIMIT ? OFFSET ?`, [query, limit.toString(), offset.toString()]);
 
-    // Convertir el buffer de la imagen QR a base64
-    items.forEach(item => {
-        if (item.qr_image) {
-            item.qr_image = item.qr_image.toString('base64');
-        }
-    });
+        // Convertir el buffer de la imagen QR a base64
+        items.forEach(item => {
+            if (item.qr_image) {
+                item.qr_image = item.qr_image.toString('base64');
+            }
+        });
 
-    res.json({
-        success: true,
-        items,
-        totalPages,
-        currentPage: page
-    });
+        res.json({
+            success: true,
+            items,
+            totalPages,
+            currentPage: page
+        });
+    } catch (error) {
+        console.error('Error al obtener los elementos:', error);
+        res.status(500).json({ success: false, error: 'Error al obtener los elementos' });
+    }
 });
 
-app.put('/admin/edit/:id', isAuthenticated, (req, res) => {
+app.put('/admin/edit/:id', isAuthenticated, async (req, res) => {
     const id = req.params.id;
     const { csv, fecha, expediente, qr_image } = req.body;
 
@@ -130,13 +149,10 @@ app.put('/admin/edit/:id', isAuthenticated, (req, res) => {
     }
 
     try {
-        let stmt;
         if (qrImageBuffer) {
-            stmt = db.prepare('UPDATE items SET csv = ?, fecha = ?, expediente = ?, qr_image = ? WHERE id = ?');
-            stmt.run(csv, fecha, expediente, qrImageBuffer, id);
+            await connection.execute('UPDATE items SET csv = ?, fecha = ?, expediente = ?, qr_image = ? WHERE id = ?', [csv, fecha, expediente, qrImageBuffer, id]);
         } else {
-            stmt = db.prepare('UPDATE items SET csv = ?, fecha = ?, expediente = ? WHERE id = ?');
-            stmt.run(csv, fecha, expediente, id);
+            await connection.execute('UPDATE items SET csv = ?, fecha = ?, expediente = ? WHERE id = ?', [csv, fecha, expediente, id]);
         }
 
         res.json({ success: true });
@@ -146,12 +162,11 @@ app.put('/admin/edit/:id', isAuthenticated, (req, res) => {
     }
 });
 
-app.delete('/admin/delete/:id', isAuthenticated, (req, res) => {
+app.delete('/admin/delete/:id', isAuthenticated, async (req, res) => {
     const id = req.params.id;
     try {
-        const stmt = db.prepare('DELETE FROM items WHERE id = ?');
-        const result = stmt.run(id);
-        if (result.changes > 0) {
+        const [result] = await connection.execute('DELETE FROM items WHERE id = ?', [id]);
+        if (result.affectedRows > 0) {
             res.json({ success: true });
         } else {
             res.json({ success: false, error: 'Elemento no encontrado' });
@@ -196,15 +211,15 @@ app.get('/verify', (req, res) => {
 });
 
 // Ruta para la comprobación del formulario de verificación
-app.post('/verify', (req, res) => {
+app.post('/verify', async (req, res) => {
     try {
         const { csvCode, fecha, expediente } = req.body;
         console.log('Verificando datos:', { csvCode, fecha, expediente });
 
         // Buscar el registro en la base de datos
-        const item = db.prepare('SELECT * FROM items WHERE csv = ? AND fecha = ? AND expediente = ?').get(csvCode, fecha, expediente);
+        const [rows] = await connection.execute('SELECT * FROM items WHERE csv = ? AND fecha = ? AND expediente = ?', [csvCode, fecha, expediente]);
 
-        if (item) {
+        if (rows.length > 0) {
             res.json({ valid: true });
         } else {
             res.json({ valid: false });

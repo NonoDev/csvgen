@@ -72,7 +72,6 @@
         </div>
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             let currentPage = 1;
@@ -107,7 +106,7 @@
                                         <i class="material-icons copy-icon" data-value="${item.expediente}">content_copy</i>
                                     </td>
                                     <td>
-                                        <img src="data:image/png;base64,${item.qr_image.toString('base64')}" alt="QR Code" style="width: 70px; height: 70px;">
+                                        <img src="data:image/png;base64,${item.qr_image}" alt="QR Code" style="width: 70px; height: 70px;">
                                     </td>
                                     <td class="right-align">
                                         <button class="btn blue lighten-2 edit-btn" data-id="${item.id}">Editar</button>
