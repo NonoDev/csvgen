@@ -25,28 +25,33 @@ app.use(
 
 // Configuración de la base de datos MySQL
 const dbConfig = {
-    host: 'qaln280.invemtec.es', // Cambia esto por tu host de MySQL
-    user: 'qaln280', // Cambia esto por tu usuario de MySQL
-    password: '123Lorryges', // Cambia esto por tu contraseña de MySQL
-    database: 'qaln280' // Cambia esto por tu base de datos de MySQL
+    host: process.env.DB_HOST || 'qaln280.invemtec.es', // Cambia esto por tu host de MySQL
+    user: process.env.DB_USER || 'qaln280', // Cambia esto por tu usuario de MySQL
+    password: process.env.DB_PASSWORD || '123Lorryges', // Cambia esto por tu contraseña de MySQL
+    database: process.env.DB_NAME || 'qaln280' // Cambia esto por tu base de datos de MySQL
 };
 
 let connection;
 
 async function connectToDatabase() {
-    connection = await mysql.createConnection(dbConfig);
-    console.log('Conectado a la base de datos MySQL');
+    try {
+        connection = await mysql.createConnection(dbConfig);
+        console.log('Conectado a la base de datos MySQL');
 
-    // Crear tabla si no existe
-    await connection.execute(`
-        CREATE TABLE IF NOT EXISTS items (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            csv TEXT NOT NULL,
-            fecha TEXT NOT NULL,
-            expediente TEXT NOT NULL,
-            qr_image BLOB
-        )
-    `);
+        // Crear tabla si no existe
+        await connection.execute(`
+            CREATE TABLE IF NOT EXISTS items (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                csv TEXT NOT NULL,
+                fecha TEXT NOT NULL,
+                expediente TEXT NOT NULL,
+                qr_image BLOB
+            )
+        `);
+    } catch (error) {
+        console.error('Error al conectar a la base de datos MySQL:', error);
+        setTimeout(connectToDatabase, 5000); // Reintentar la conexión después de 5 segundos
+    }
 }
 
 connectToDatabase().catch(err => {
@@ -65,6 +70,14 @@ bcrypt.hash(plainPassword, 10, async (err, hash) => {
     if (err) throw err;
     user.passwordHash = hash;
     console.log('Usuario registrado con hash:', hash);
+});
+
+// Middleware para verificar la conexión a la base de datos
+app.use((req, res, next) => {
+    if (!connection) {
+        return res.status(500).json({ success: false, error: 'No hay conexión a la base de datos' });
+    }
+    next();
 });
 
 // Rutas de la aplicación
@@ -141,20 +154,10 @@ app.get('/admin/items', isAuthenticated, async (req, res) => {
 
 app.put('/admin/edit/:id', isAuthenticated, async (req, res) => {
     const id = req.params.id;
-    const { csv, fecha, expediente, qr_image } = req.body;
-
-    let qrImageBuffer = null;
-    if (qr_image) {
-        qrImageBuffer = Buffer.from(qr_image.split(',')[1], 'base64'); // Convertir la imagen base64 a un buffer
-    }
+    const { csv, fecha, expediente } = req.body;
 
     try {
-        if (qrImageBuffer) {
-            await connection.execute('UPDATE items SET csv = ?, fecha = ?, expediente = ?, qr_image = ? WHERE id = ?', [csv, fecha, expediente, qrImageBuffer, id]);
-        } else {
-            await connection.execute('UPDATE items SET csv = ?, fecha = ?, expediente = ? WHERE id = ?', [csv, fecha, expediente, id]);
-        }
-
+        await connection.execute('UPDATE items SET csv = ?, fecha = ?, expediente = ? WHERE id = ?', [csv, fecha, expediente, id]);
         res.json({ success: true });
     } catch (error) {
         console.error('Error al editar el ítem:', error);
