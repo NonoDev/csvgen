@@ -19,7 +19,7 @@
                     <h5>Código QR:</h5>
                     <div id="qrcode"></div>
                     <h5>Fecha de Registro:</h5>
-                    <input type="text" id="registro-fecha" class="datepicker">
+                    <input type="text" id="registro-fecha" format="dd mm yyyy" class="datepicker">
                     <h5>Número de Expediente:</h5>
                     <input type="text" id="expediente" class="validate">
                 </div>
@@ -42,7 +42,7 @@
         document.addEventListener('DOMContentLoaded', function() {
             const dateElems = document.querySelectorAll('.datepicker');
             M.Datepicker.init(dateElems, {
-                format: 'yyyy-mm-dd',
+                format: 'dd-mm-yyyy',
                 autoClose: true
             });
         });
