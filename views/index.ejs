@@ -19,7 +19,7 @@
                     <h5>Código QR:</h5>
                     <div id="qrcode"></div>
                     <h5>Fecha de Registro:</h5>
-                    <input type="text" id="registro-fecha" format="dd mm yyyy" class="datepicker">
+                    <input type="text" id="registro-fecha" class="datepicker">
                     <h5>Número de Expediente:</h5>
                     <input type="text" id="expediente" class="validate">
                 </div>
@@ -56,26 +56,43 @@
             return result;
         }
 
+        // Convertir una fecha en formato "dd-mm-yyyy" a "dd-mm-aaaa"
+        // Aquí simplemente se conservan los guiones
+        function formatDateToDDMMAAAA(fechaStr) {
+            const parts = fechaStr.split('-'); // parts[0]: dd, parts[1]: mm, parts[2]: yyyy
+            return `${parts[0]}-${parts[1]}-${parts[2]}`;
+        }
+
         document.getElementById('generate-btn').addEventListener('click', function() {
             const now = new Date();
-            const datePart = document.getElementById('registro-fecha').value || now.toISOString().split('T')[0];
-            const timePart = now.toTimeString().split(' ')[0]; // Hora con formato HH:MM:SS
-            const dateWithTime = `${datePart} ${timePart}`; // Fecha y hora juntas
-            const datePartCleaned = datePart.replace(/-/g, '');
-            const timePartCleaned = timePart.replace(/:/g, '').substring(0, 4); // Reducimos la hora a HHMM
+            let datePart = document.getElementById('registro-fecha').value;
+            // Si no se seleccionó fecha, se usa la fecha actual en formato dd-mm-yyyy
+            if (!datePart) {
+                const day = String(now.getDate()).padStart(2,'0');
+                const month = String(now.getMonth() + 1).padStart(2,'0');
+                const year = now.getFullYear();
+                datePart = `${day}-${month}-${year}`;
+            }
+            // Formateamos la fecha a "dd-mm-aaaa" conservando los guiones
+            const formattedDate = formatDateToDDMMAAAA(datePart);
+
+            const timePart = now.toTimeString().split(' ')[0]; // HH:MM:SS
+            const timePartCleaned = timePart.replace(/:/g, '').substring(0, 4); // HHMM
             const randomPart = generateRandomString(12);
-            const csv = datePartCleaned + timePartCleaned + randomPart;
+            // Para el código CSV se quitan los guiones
+            const csv = formattedDate.replace(/-/g, '') + timePartCleaned + randomPart;
             const yearPart = now.getFullYear().toString();
             const expedienteInput = document.getElementById('expediente').value.trim();
             const expediente = expedienteInput || yearPart + generateRandomString(6);
 
             // Mostrar los datos en pantalla
             document.getElementById('csv-code').innerText = csv;
-            document.getElementById('registro-fecha').value = datePart; // Solo la fecha, sin la hora
+            // Se actualiza el campo de fecha manteniendo el formato con guiones
+            document.getElementById('registro-fecha').value = formattedDate;
             document.getElementById('expediente').value = expediente;
 
-            // Generar QR con los datos
-            const verificationUrl = `${window.location.origin}/verify?csv=${encodeURIComponent(csv)}&fecha=${encodeURIComponent(datePart)}&expediente=${encodeURIComponent(expediente)}`;
+            // Generar URL de verificación para el QR
+            const verificationUrl = `${window.location.origin}/verify?csv=${encodeURIComponent(csv)}&fecha=${encodeURIComponent(formattedDate)}&expediente=${encodeURIComponent(expediente)}`;
             const qrcodeContainer = document.getElementById('qrcode');
             qrcodeContainer.innerHTML = ''; // Limpiar QR previo
 
@@ -85,7 +102,7 @@
             qrcodeContainer.innerHTML = qr.createImgTag(4); // Tamaño de escala 4
         });
 
-        document.getElementById('validate-store-btn').addEventListener('click', function() {
+        document.getElementById('validate-store-btn').addEventListener('click', async () => {
             const csv = document.getElementById('csv-code').innerText;
             const fecha = document.getElementById('registro-fecha').value;
             const expediente = document.getElementById('expediente').value.trim();
@@ -93,39 +110,22 @@
             const qrImage = qrcodeContainer.querySelector('img').src;
 
             if (csv && fecha && expediente && qrImage) {
-                // Comprobar si el expediente ya existe
-                fetch('/check-expediente', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ expediente })
-                }).then(response => response.json()).then(data => {
-                    if (data.exists) {
-                        alert('El expediente ya existe en la base de datos.');
+                try {
+                    const response = await fetch('/generate', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ csv, fecha, expediente, qr_image: qrImage })
+                    });
+                    const result = await response.json();
+                    if (result.success) {
+                        M.toast({html: 'Datos guardados con éxito!'});
                     } else {
-                        // Guardar los datos si el expediente no existe
-                        fetch('/generate', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify({ csv, fecha, expediente, qr_image: qrImage })
-                        }).then(response => response.json()).then(data => {
-                            if (data.success) {
-                                alert('Datos guardados con éxito!');
-                            } else {
-                                alert('Error al guardar los datos.');
-                            }
-                        }).catch(error => {
-                            console.error('Error:', error);
-                            alert('Hubo un error al almacenar los datos.');
-                        });
+                        M.toast({html: 'Error al guardar los datos'});
                     }
-                }).catch(error => {
-                    console.error('Error al comprobar el expediente:', error);
-                    alert('Hubo un error al comprobar el expediente.');
-                });
+                } catch (error) {
+                    console.error('Error al guardar los datos:', error);
+                    M.toast({html: 'Error al guardar los datos'});
+                }
             } else {
                 alert('Por favor, genera primero los datos.');
             }

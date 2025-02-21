@@ -30,7 +30,9 @@
         <table class="striped">
             <thead>
                 <tr>
-                    <th id="th-id" data-order="desc">ID <i class="material-icons" id="id-arrow">arrow_downward</i></th>
+                    <th id="th-id" data-order="desc">
+                        ID <i class="material-icons" id="id-arrow">arrow_downward</i>
+                    </th>
                     <th>Fecha</th>
                     <th>CSV</th>
                     <th>Expediente</th>
@@ -79,6 +81,24 @@
             let currentOrderDirection = 'desc';
             let currentEditId = null;
 
+            // Función que convierte un string en formato "dd-mm-yyyy" a un objeto Date
+            const parseFecha = (fechaStr) => {
+                const parts = fechaStr.split('-'); // parts[0]: dd, parts[1]: mm, parts[2]: yyyy
+                if (parts.length === 3) {
+                    return new Date(parts[2], parts[1] - 1, parts[0]);
+                }
+                return new Date(fechaStr); // fallback
+            };
+
+            // Función para formatear un objeto Date a "dd-mm-aaaa"
+            const formatDate = (date) => {
+                const dd = String(date.getDate()).padStart(2, '0');
+                const mm = String(date.getMonth() + 1).padStart(2, '0');
+                const yyyy = date.getFullYear();
+                return `${dd}-${mm}-${yyyy}`;
+            };
+
+            // Función para cargar los elementos y actualizar la tabla y paginación
             const loadItems = (page, query = '', orderColumn = 'id', orderDirection = 'desc') => {
                 fetch(`/admin/items?page=${page}&query=${query}&orderColumn=${orderColumn}&orderDirection=${orderDirection}`)
                     .then(response => response.json())
@@ -88,14 +108,21 @@
                             tbody.innerHTML = '';
 
                             data.items.forEach(item => {
+                                let formattedFecha = 'Fecha no válida';
+                                if (item.fecha) {
+                                    const d = parseFecha(item.fecha);
+                                    if (!isNaN(d)) {
+                                        formattedFecha = formatDate(d);
+                                    }
+                                }
+
                                 const row = document.createElement('tr');
                                 row.setAttribute('data-id', item.id);
-
                                 row.innerHTML = `
                                     <td>${item.id}</td>
                                     <td>
-                                        <input type="text" value="${item.fecha ? new Date(item.fecha).toISOString().split('T')[0] : 'Fecha no válida'}" class="fecha-input" disabled>
-                                        <i class="material-icons copy-icon" data-value="${item.fecha ? new Date(item.fecha).toISOString().split('T')[0] : 'Fecha no válida'}">content_copy</i>
+                                        <input type="text" value="${formattedFecha}" class="fecha-input" disabled>
+                                        <i class="material-icons copy-icon" data-value="${formattedFecha}">content_copy</i>
                                     </td>
                                     <td>
                                         <input type="text" value="${item.csv}" class="csv-input" disabled>
@@ -113,7 +140,6 @@
                                         <button class="btn red lighten-2 delete-btn" data-id="${item.id}">Eliminar</button>
                                     </td>
                                 `;
-
                                 tbody.appendChild(row);
                             });
 
@@ -127,18 +153,20 @@
                     })
                     .catch(error => {
                         console.error('Error al cargar los elementos:', error);
+                        M.toast({html: 'Error al cargar los elementos'});
                     });
             };
+
+            // Hacemos loadItems accesible globalmente para los onclick de la paginación
+            window.loadItems = loadItems;
 
             const setupCopyIcons = () => {
                 document.querySelectorAll('.copy-icon').forEach(icon => {
                     icon.addEventListener('click', () => {
                         const value = icon.getAttribute('data-value');
-                        navigator.clipboard.writeText(value).then(() => {
-                            M.toast({html: 'Texto copiado al portapapeles'});
-                        }).catch(err => {
-                            console.error('Error al copiar:', err);
-                        });
+                        navigator.clipboard.writeText(value)
+                            .then(() => M.toast({html: 'Texto copiado al portapapeles'}))
+                            .catch(err => console.error('Error al copiar:', err));
                     });
                 });
             };
@@ -164,6 +192,7 @@
                 });
             };
 
+            // Guardar cambios desde el modal de edición
             document.getElementById('save-btn').addEventListener('click', () => {
                 const id = currentEditId;
                 const fecha = document.getElementById('modal-fecha').value.trim();
@@ -172,18 +201,19 @@
 
                 fetch(`/admin/edit/${id}`, {
                     method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ csv, fecha, expediente })
-                }).then(response => response.json()).then(data => {
+                })
+                .then(response => response.json())
+                .then(data => {
                     if (data.success) {
                         M.toast({html: 'Elemento editado con éxito'});
                         loadItems(currentPage, '', currentOrderColumn, currentOrderDirection);
                     } else {
                         M.toast({html: 'Error al editar el elemento'});
                     }
-                }).catch(error => {
+                })
+                .catch(error => {
                     console.error('Error al editar:', error);
                 });
             });
@@ -193,18 +223,19 @@
                     button.addEventListener('click', () => {
                         const id = button.getAttribute('data-id');
                         if (confirm('¿Estás seguro de que deseas eliminar este elemento?')) {
-                            fetch(`/admin/delete/${id}`, {
-                                method: 'DELETE'
-                            }).then(response => response.json()).then(data => {
-                                if (data.success) {
-                                    M.toast({html: 'Elemento eliminado con éxito'});
-                                    loadItems(currentPage, '', currentOrderColumn, currentOrderDirection);
-                                } else {
-                                    M.toast({html: 'Error al eliminar el elemento'});
-                                }
-                            }).catch(error => {
-                                console.error('Error al eliminar:', error);
-                            });
+                            fetch(`/admin/delete/${id}`, { method: 'DELETE' })
+                                .then(response => response.json())
+                                .then(data => {
+                                    if (data.success) {
+                                        M.toast({html: 'Elemento eliminado con éxito'});
+                                        loadItems(currentPage, '', currentOrderColumn, currentOrderDirection);
+                                    } else {
+                                        M.toast({html: 'Error al eliminar el elemento'});
+                                    }
+                                })
+                                .catch(error => {
+                                    console.error('Error al eliminar:', error);
+                                });
                         }
                     });
                 });
@@ -246,9 +277,10 @@
                 loadItems(1, '', currentOrderColumn, currentOrderDirection);
             });
 
+            // Cargar elementos al iniciar
             loadItems(currentPage, '', currentOrderColumn, currentOrderDirection);
 
-            // Initialize modal
+            // Inicializar el modal
             const elems = document.querySelectorAll('.modal');
             M.Modal.init(elems);
         });
