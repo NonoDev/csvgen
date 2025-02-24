@@ -14,13 +14,14 @@ const Item = sequelize.define('Item', {
     csv: { type: DataTypes.STRING, allowNull: false },
     fecha: { type: DataTypes.STRING, allowNull: false },
     expediente: { type: DataTypes.STRING, allowNull: false },
+    matricula: { type: DataTypes.STRING, allowNull: false },
 }, {
     timestamps: false,  // Desactiva las marcas de tiempo automáticas
 });
 
 
 // Sincronizar el modelo con la base de datos
-sequelize.sync()
+sequelize.sync({ alter: true })
     .then(() => console.log('Modelo sincronizado con la base de datos'))
     .catch(error => console.error('Error al sincronizar el modelo:', error));
 

@@ -45,6 +45,7 @@ async function connectToDatabase() {
                 csv TEXT NOT NULL,
                 fecha TEXT NOT NULL,
                 expediente TEXT NOT NULL,
+                matricula TEXT NOT NULL,
                 qr_image BLOB
             )
         `);
@@ -90,11 +91,13 @@ app.get('/', isAuthenticated, (req, res) => {
 });
 
 app.post('/generate', isAuthenticated, async (req, res) => {
-    const { csv, fecha, expediente, qr_image } = req.body;
-    const qrImageBuffer = Buffer.from(qr_image.split(',')[1], 'base64'); // Convertir la imagen base64 a un buffer
-
+    const { csv, fecha, expediente, matricula, qr_image } = req.body;
+    const qrImageBuffer = Buffer.from(qr_image.split(',')[1], 'base64');
     try {
-        await connection.execute('INSERT INTO items (csv, fecha, expediente, qr_image) VALUES (?, ?, ?, ?)', [csv, fecha, expediente, qrImageBuffer]);
+        await connection.execute(
+            'INSERT INTO items (csv, fecha, expediente, matricula, qr_image) VALUES (?, ?, ?, ?, ?)',
+            [csv, fecha, expediente, matricula, qrImageBuffer]
+        );
         res.json({ success: true });
     } catch (error) {
         console.error('Error al crear el ítem:', error);
@@ -158,10 +161,13 @@ app.get('/admin/items', isAuthenticated, async (req, res) => {
 
 app.put('/admin/edit/:id', isAuthenticated, async (req, res) => {
     const id = req.params.id;
-    const { csv, fecha, expediente } = req.body;
+    const { csv, fecha, expediente, matricula } = req.body;
 
     try {
-        await connection.execute('UPDATE items SET csv = ?, fecha = ?, expediente = ? WHERE id = ?', [csv, fecha, expediente, id]);
+        await connection.execute(
+            'UPDATE items SET csv = ?, fecha = ?, expediente = ?, matricula = ? WHERE id = ?',
+            [csv, fecha, expediente, matricula, id]
+        );
         res.json({ success: true });
     } catch (error) {
         console.error('Error al editar el ítem:', error);
@@ -221,12 +227,12 @@ app.get('/verify', (req, res) => {
 // Ruta para la comprobación del formulario de verificación
 app.post('/verify', async (req, res) => {
     try {
-        const { csvCode, fecha, expediente } = req.body;
-        console.log('Verificando datos:', { csvCode, fecha, expediente });
-
-        // Buscar el registro en la base de datos
-        const [rows] = await connection.execute('SELECT * FROM items WHERE csv = ? AND fecha = ? AND expediente = ?', [csvCode, fecha, expediente]);
-
+        const { csvCode, fecha, expediente, matricula } = req.body;
+        console.log('Verificando datos:', { csvCode, fecha, expediente, matricula });
+        const [rows] = await connection.execute(
+            'SELECT * FROM items WHERE csv = ? AND fecha = ? AND expediente = ? AND matricula = ?',
+            [csvCode, fecha, expediente, matricula]
+        );
         if (rows.length > 0) {
             res.json({ valid: true });
         } else {

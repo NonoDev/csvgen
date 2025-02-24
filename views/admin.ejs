@@ -36,6 +36,7 @@
                     <th>Fecha</th>
                     <th>CSV</th>
                     <th>Expediente</th>
+                    <th>Matrícula</th>
                     <th>QR</th>
                     <th class="right-align">Acciones</th>
                 </tr>
@@ -66,6 +67,10 @@
                 <div class="input-field col s12">
                     <input id="modal-expediente" type="text" class="validate">
                     <label for="modal-expediente">Expediente</label>
+                </div>
+                <div class="input-field col s12">
+                    <input id="modal-matricula" type="text" class="validate">
+                    <label for="modal-matricula">Matrícula</label>
                 </div>
             </div>
         </div>
@@ -115,7 +120,7 @@
                                         formattedFecha = formatDate(d);
                                     }
                                 }
-
+                            
                                 const row = document.createElement('tr');
                                 row.setAttribute('data-id', item.id);
                                 row.innerHTML = `
@@ -131,6 +136,10 @@
                                     <td>
                                         <input type="text" value="${item.expediente}" class="expediente-input" disabled>
                                         <i class="material-icons copy-icon" data-value="${item.expediente}">content_copy</i>
+                                    </td>
+                                    <td>
+                                        <input type="text" value="${item.matricula}" class="matricula-input" disabled>
+                                        <i class="material-icons copy-icon" data-value="${item.matricula}">content_copy</i>
                                     </td>
                                     <td>
                                         <img src="data:image/png;base64,${item.qr_image}" alt="QR Code" style="width: 70px; height: 70px;">
@@ -180,7 +189,9 @@
                         const fecha = row.querySelector('.fecha-input').value.trim();
                         const csv = row.querySelector('.csv-input').value.trim();
                         const expediente = row.querySelector('.expediente-input').value.trim();
-
+                        const matricula = row.querySelector('.matricula-input') ? row.querySelector('.matricula-input').value.trim() : '';
+                        
+                        document.getElementById('modal-matricula').value = matricula;
                         document.getElementById('modal-fecha').value = fecha;
                         document.getElementById('modal-csv').value = csv;
                         document.getElementById('modal-expediente').value = expediente;
@@ -198,11 +209,12 @@
                 const fecha = document.getElementById('modal-fecha').value.trim();
                 const csv = document.getElementById('modal-csv').value.trim();
                 const expediente = document.getElementById('modal-expediente').value.trim();
-
+                const matricula = document.getElementById('modal-matricula').value.trim();
+            
                 fetch(`/admin/edit/${id}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ csv, fecha, expediente })
+                    body: JSON.stringify({ csv, fecha, expediente, matricula })
                 })
                 .then(response => response.json())
                 .then(data => {
