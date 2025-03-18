@@ -65,7 +65,6 @@ const user = {
     passwordHash: null,
 };
 
-// Contraseña y registro
 const plainPassword = '12Admin@2025';
 bcrypt.hash(plainPassword, 10, async (err, hash) => {
     if (err) throw err;
@@ -125,21 +124,35 @@ app.get('/admin', isAuthenticated, (req, res) => {
     res.render('admin');
 });
 
+// Endpoint modificado para buscar por columna (por defecto, matricula)
 app.get('/admin/items', isAuthenticated, async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = 10; // Número de elementos por página
     const offset = (page - 1) * limit;
-    const query = req.query.query ? `%${req.query.query}%` : '%';
+    const queryParam = req.query.query ? `%${req.query.query}%` : '%';
     const orderColumn = req.query.orderColumn || 'id';
     const orderDirection = req.query.orderDirection || 'desc';
+    
+    // Usamos el parámetro searchColumn, con valor por defecto 'matricula'
+    let searchColumn = req.query.searchColumn || 'matricula';
+    const validColumns = ['id', 'csv', 'fecha', 'expediente', 'matricula'];
+    if (!validColumns.includes(searchColumn)) {
+        searchColumn = 'expediente';
+    }
 
     try {
-        const [totalItemsResult] = await connection.execute('SELECT COUNT(*) AS count FROM items WHERE expediente LIKE ?', [query]);
+        const [totalItemsResult] = await connection.execute(
+            `SELECT COUNT(*) AS count FROM items WHERE ${searchColumn} LIKE ?`, 
+            [queryParam]
+        );
         const totalItems = totalItemsResult[0].count;
         const totalPages = Math.ceil(totalItems / limit);
 
-        const [items] = await connection.execute(`SELECT * FROM items WHERE expediente LIKE ? ORDER BY ${orderColumn} ${orderDirection} LIMIT ? OFFSET ?`, [query, limit.toString(), offset.toString()]);
-
+        const [items] = await connection.execute(
+            `SELECT * FROM items WHERE ${searchColumn} LIKE ? ORDER BY ${orderColumn} ${orderDirection} LIMIT ? OFFSET ?`, 
+            [queryParam, limit.toString(), offset.toString()]
+        );
+        
         // Convertir el buffer de la imagen QR a base64
         items.forEach(item => {
             if (item.qr_image) {

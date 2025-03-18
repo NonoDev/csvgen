@@ -22,7 +22,7 @@
         <div class="row">
             <div class="input-field col s6 offset-s3">
                 <input id="search" type="text" class="validate">
-                <label for="search">Buscar Expediente</label>
+                <label for="search">Buscar Matrícula</label>
             </div>
         </div>
 
@@ -104,8 +104,9 @@
             };
 
             // Función para cargar los elementos y actualizar la tabla y paginación
+            // Se añade el parámetro "searchColumn=matricula" para que el backend filtre por matrícula
             const loadItems = (page, query = '', orderColumn = 'id', orderDirection = 'desc') => {
-                fetch(`/admin/items?page=${page}&query=${query}&orderColumn=${orderColumn}&orderDirection=${orderDirection}`)
+                fetch(`/admin/items?page=${page}&query=${query}&orderColumn=${orderColumn}&orderDirection=${orderDirection}&searchColumn=matricula`)
                     .then(response => response.json())
                     .then(data => {
                         if (data.success) {
